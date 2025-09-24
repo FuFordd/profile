@@ -6,6 +6,8 @@
     <title>ระบบตัดเกรด</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN สำหรับสร้างกราฟ -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         /* สไตล์สำหรับซ่อนปุ่ม spinner ใน input number */
         input[type=number]::-webkit-inner-spin-button,
@@ -18,13 +20,13 @@
         }
     </style>
 </head>
-<body class="bg-gray-100 font-sans p-4 md:p-8">
+<body class="bg-slate-50 font-sans p-4 md:p-8">
 
-    <div class="max-w-6xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden">
+    <div class="max-w-6xl mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden">
         
         <!-- ส่วนหัวข้อ -->
-        <div class="bg-indigo-600 text-white p-6 md:p-8 text-center">
-            <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight">
+        <div class="bg-sky-600 text-white p-6 md:p-8 text-center">
+            <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight drop-shadow-lg">
                 ระบบตัดเกรดนักเรียน
             </h1>
             <p class="mt-2 text-sm md:text-base opacity-90">
@@ -34,9 +36,32 @@
 
         <div class="p-6 md:p-10 space-y-8">
             
+            <!-- ส่วนแผงควบคุม (Dashboard) -->
+            <div class="bg-slate-100 p-6 rounded-2xl shadow-inner border border-slate-200">
+                <h2 class="text-xl md:text-2xl font-bold text-slate-800 mb-4">
+                    สรุปผลภาพรวม
+                </h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- การ์ดจำนวนนักเรียน -->
+                    <div class="bg-white p-6 rounded-xl shadow-md border-b-4 border-orange-500">
+                        <div class="text-gray-500 text-sm font-medium">จำนวนนักเรียนทั้งหมด</div>
+                        <div id="total-students" class="text-3xl font-bold text-orange-600 mt-1">0</div>
+                    </div>
+                    <!-- การ์ดคะแนนเฉลี่ย -->
+                    <div class="bg-white p-6 rounded-xl shadow-md border-b-4 border-sky-500">
+                        <div class="text-gray-500 text-sm font-medium">คะแนนเฉลี่ยรวม</div>
+                        <div id="average-score" class="text-3xl font-bold text-sky-600 mt-1">0</div>
+                    </div>
+                    <!-- กราฟแท่งแสดงเกรด -->
+                    <div class="lg:col-span-3 bg-white p-6 rounded-xl shadow-md">
+                         <canvas id="grades-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+
             <!-- ส่วนกำหนดน้ำหนักคะแนน -->
-            <div class="bg-indigo-50 p-6 rounded-xl shadow-inner border border-indigo-200">
-                <h2 class="text-xl md:text-2xl font-bold text-indigo-800 mb-4">
+            <div class="bg-orange-50 p-6 rounded-2xl shadow-inner border border-orange-200">
+                <h2 class="text-xl md:text-2xl font-bold text-orange-800 mb-4">
                     กำหนดน้ำหนักคะแนน
                 </h2>
                 <div class="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-8">
@@ -45,23 +70,23 @@
                             น้ำหนักคะแนนเก็บ (0-1):
                         </label>
                         <input type="number" id="work-weight" value="0.6" step="0.1"
-                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm
-                                      focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                               class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm
+                                      focus:border-sky-500 focus:ring focus:ring-sky-200 focus:ring-opacity-50">
                     </div>
                     <div class="flex-1">
                         <label for="exam-weight" class="block text-gray-700 font-medium">
                             น้ำหนักคะแนนสอบ (0-1):
                         </label>
                         <input type="number" id="exam-weight" value="0.4" step="0.1"
-                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm
-                                      focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                               class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm
+                                      focus:border-sky-500 focus:ring focus:ring-sky-200 focus:ring-opacity-50">
                     </div>
                 </div>
             </div>
 
             <!-- ส่วนฟอร์มเพิ่มนักเรียน -->
-            <div class="bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200">
-                <h2 class="text-xl md:text-2xl font-bold text-gray-800 mb-4">
+            <div class="bg-white p-6 rounded-2xl shadow-inner border border-gray-200">
+                <h2 class="text-xl md:text-2xl font-bold text-slate-800 mb-4">
                     เพิ่มรายชื่อนักเรียน
                 </h2>
                 <form id="add-student-form" class="space-y-4">
@@ -69,41 +94,54 @@
                         <div class="flex-1">
                             <label for="student-name" class="block text-gray-700 font-medium">ชื่อ-สกุล:</label>
                             <input type="text" id="student-name" required
-                                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm
-                                          focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                                   class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm
+                                          focus:border-sky-500 focus:ring focus:ring-sky-200 focus:ring-opacity-50">
                         </div>
                         <div class="flex-1">
                             <label for="student-work-score" class="block text-gray-700 font-medium">คะแนนเก็บ (1-100):</label>
                             <input type="number" id="student-work-score" required min="0" max="100"
-                                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm
-                                          focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                                   class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm
+                                          focus:border-sky-500 focus:ring focus:ring-sky-200 focus:ring-opacity-50">
                         </div>
                         <div class="flex-1">
                             <label for="student-exam-score" class="block text-gray-700 font-medium">คะแนนสอบ (1-100):</label>
                             <input type="number" id="student-exam-score" required min="0" max="100"
-                                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm
-                                          focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                                   class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm
+                                          focus:border-sky-500 focus:ring focus:ring-sky-200 focus:ring-opacity-50">
                         </div>
                     </div>
                     <button type="submit"
-                            class="w-full md:w-auto px-6 py-3 bg-indigo-600 text-white font-bold rounded-lg
-                                   shadow-lg hover:bg-indigo-700 transition-colors duration-200">
+                            class="w-full md:w-auto px-6 py-3 bg-orange-500 text-white font-bold rounded-lg
+                                   shadow-lg hover:bg-orange-600 transition-colors duration-200">
                         เพิ่มนักเรียน
                     </button>
                 </form>
             </div>
 
             <!-- ส่วนตารางแสดงผลและปุ่มคำนวณ -->
-            <div class="bg-white p-6 rounded-xl shadow-lg">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl md:text-2xl font-bold text-gray-800">
+            <div class="bg-white p-6 rounded-2xl shadow-lg">
+                <div class="flex flex-col md:flex-row justify-between items-center mb-4 space-y-4 md:space-y-0">
+                    <h2 class="text-xl md:text-2xl font-bold text-slate-800">
                         ผลการคำนวณเกรด
                     </h2>
-                    <button id="calculate-grades-btn"
-                            class="px-4 py-2 bg-green-500 text-white font-bold rounded-lg
-                                   shadow-md hover:bg-green-600 transition-colors duration-200">
-                        คำนวณเกรดทั้งหมด
-                    </button>
+                    <div class="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2 w-full md:w-auto">
+                        <button id="calculate-grades-btn"
+                                class="w-full md:w-auto px-4 py-2 bg-sky-500 text-white font-bold rounded-lg
+                                       shadow-md hover:bg-sky-600 transition-colors duration-200">
+                            คำนวณเกรดทั้งหมด
+                        </button>
+                        <button id="export-csv-btn"
+                                class="w-full md:w-auto px-4 py-2 bg-blue-700 text-white font-bold rounded-lg
+                                       shadow-md hover:bg-blue-800 transition-colors duration-200">
+                            Export CSV
+                        </button>
+                        <label for="import-csv-input"
+                               class="w-full md:w-auto px-4 py-2 bg-orange-600 text-white font-bold rounded-lg
+                                      shadow-md hover:bg-orange-700 transition-colors duration-200 text-center cursor-pointer">
+                            Import CSV
+                            <input type="file" id="import-csv-input" accept=".csv" class="hidden">
+                        </label>
+                    </div>
                 </div>
                 
                 <div class="overflow-x-auto rounded-xl">
@@ -151,6 +189,9 @@
             // ตัวแปรสำหรับเก็บข้อมูลนักเรียน
             let students = [];
             
+            // ตัวแปรสำหรับเก็บ instance ของกราฟ Chart.js
+            let myChart;
+
             // ข้อมูลตัวอย่างสำหรับแสดงตอนโหลดหน้าครั้งแรก
             const sampleStudents = [
                 { name: 'สมศรี มีใจ', workScore: 85, examScore: 92 },
@@ -169,6 +210,11 @@
             const gradesTableBody = document.getElementById('grades-table-body');
             const addStudentForm = document.getElementById('add-student-form');
             const calculateGradesBtn = document.getElementById('calculate-grades-btn');
+            const exportCsvBtn = document.getElementById('export-csv-btn');
+            const importCsvInput = document.getElementById('import-csv-input');
+            const totalStudentsEl = document.getElementById('total-students');
+            const averageScoreEl = document.getElementById('average-score');
+            const gradesChartEl = document.getElementById('grades-chart');
 
             // ฟังก์ชันสำหรับบันทึกข้อมูลนักเรียนลงใน localStorage
             const saveStudents = () => {
@@ -225,6 +271,7 @@
                 });
                 
                 renderTable(); // แสดงผลตารางใหม่
+                renderDashboard(); // แสดงผลกราฟและสรุปใหม่
                 saveStudents(); // บันทึกข้อมูลที่คำนวณแล้ว
             };
 
@@ -233,7 +280,8 @@
                 gradesTableBody.innerHTML = ''; // ลบข้อมูลเก่าในตาราง
                 students.forEach((student, index) => {
                     const row = document.createElement('tr');
-                    row.classList.add('hover:bg-gray-50', index % 2 === 0 ? 'bg-white' : 'bg-gray-50');
+                    // เพิ่มคลาสสำหรับ striped rows
+                    row.classList.add('hover:bg-sky-50', index % 2 === 0 ? 'bg-white' : 'bg-sky-50');
                     
                     row.innerHTML = `
                         <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${index + 1}</td>
@@ -243,13 +291,115 @@
                         <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900 font-bold">${student.totalScore !== undefined ? student.totalScore : '-'}</td>
                         <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900 font-bold">${student.grade || '-'}</td>
                         <td class="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <button class="text-red-600 hover:text-red-900 transition-colors duration-200"
+                            <button class="text-red-600 hover:text-red-800 transition-colors duration-200"
                                     data-index="${index}">
                                 ลบ
                             </button>
                         </td>
                     `;
                     gradesTableBody.appendChild(row);
+                });
+            };
+
+            // ฟังก์ชันสำหรับแสดงผลสรุปและกราฟ
+            const renderDashboard = () => {
+                // คำนวณข้อมูลสรุป
+                const totalStudents = students.length;
+                const totalScoreSum = students.reduce((sum, student) => sum + (student.totalScore || 0), 0);
+                const averageScore = totalStudents > 0 ? (totalScoreSum / totalStudents).toFixed(2) : 0;
+
+                // อัปเดตข้อมูลในการ์ด
+                totalStudentsEl.textContent = totalStudents;
+                averageScoreEl.textContent = averageScore;
+
+                // คำนวณข้อมูลสำหรับกราฟ
+                const gradeDistribution = { 'A': 0, 'B': 0, 'C': 0, 'D': 0, 'F': 0 };
+                const gradeScores = { 'A': [], 'B': [], 'C': [], 'D': [], 'F': [] };
+
+                students.forEach(student => {
+                    if (student.grade) {
+                        gradeDistribution[student.grade]++;
+                        gradeScores[student.grade].push(student.totalScore);
+                    }
+                });
+
+                const averageGradeScores = {};
+                for (const grade in gradeScores) {
+                    if (gradeScores[grade].length > 0) {
+                        const sum = gradeScores[grade].reduce((a, b) => a + b, 0);
+                        averageGradeScores[grade] = parseFloat((sum / gradeScores[grade].length).toFixed(2));
+                    } else {
+                        averageGradeScores[grade] = 0;
+                    }
+                }
+
+                const labels = ['A', 'B', 'C', 'D', 'F'];
+                const studentCountData = labels.map(grade => gradeDistribution[grade]);
+                const averageScoreData = labels.map(grade => averageGradeScores[grade]);
+
+                // ทำลายกราฟเก่าถ้ามี เพื่อสร้างกราฟใหม่
+                if (myChart) {
+                    myChart.destroy();
+                }
+
+                // สร้างกราฟใหม่
+                myChart = new Chart(gradesChartEl, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'จำนวนนักเรียน',
+                                data: studentCountData,
+                                backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                                borderColor: 'rgba(54, 162, 235, 1)',
+                                borderWidth: 1,
+                                yAxisID: 'y'
+                            },
+                            {
+                                label: 'คะแนนเฉลี่ย',
+                                data: averageScoreData,
+                                backgroundColor: 'rgba(255, 159, 64, 0.6)',
+                                borderColor: 'rgba(255, 159, 64, 1)',
+                                borderWidth: 1,
+                                yAxisID: 'y1'
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                title: {
+                                    display: true,
+                                    text: 'จำนวนนักเรียน'
+                                }
+                            },
+                            y1: {
+                                beginAtZero: true,
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                grid: {
+                                    drawOnChartArea: false, // เพื่อไม่ให้เส้นกริดทับซ้อนกัน
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'คะแนนเฉลี่ย'
+                                }
+                            }
+                        },
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'การกระจายเกรดและคะแนนเฉลี่ยของนักเรียน'
+                            }
+                        }
+                    }
                 });
             };
 
@@ -282,9 +432,83 @@
                 calculateGrades(); // คำนวณเกรดใหม่หลังจากลบ
             };
 
+            // ฟังก์ชันสำหรับส่งออกข้อมูลเป็นไฟล์ CSV
+            const exportToCsv = () => {
+                if (students.length === 0) {
+                    alert('ไม่มีข้อมูลนักเรียนให้ส่งออก');
+                    return;
+                }
+
+                // ส่วนหัวตาราง
+                let csv = 'ลำดับ,ชื่อ,คะแนนเก็บ,คะแนนสอบ,คะแนนรวม,เกรด\n';
+
+                // ข้อมูลนักเรียน
+                students.forEach((student, index) => {
+                    const row = [
+                        index + 1,
+                        `"${student.name.replace(/"/g, '""')}"`, // จัดการกับ double quotes ในชื่อ
+                        student.workScore,
+                        student.examScore,
+                        student.totalScore,
+                        student.grade
+                    ];
+                    csv += row.join(',') + '\n';
+                });
+
+                // สร้าง Blob จากข้อมูล CSV (ใช้ UTF-8 เพื่อรองรับภาษาไทย)
+                const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.setAttribute('href', url);
+                link.setAttribute('download', 'student_grades.csv');
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
+
+            // ฟังก์ชันสำหรับนำเข้าข้อมูลจากไฟล์ CSV
+            const importFromCsv = (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const text = e.target.result;
+                    const importedStudents = parseCsv(text);
+                    if (importedStudents.length > 0) {
+                        students = importedStudents; // แทนที่ข้อมูลเก่าด้วยข้อมูลใหม่
+                        calculateGrades();
+                    } else {
+                        alert('ไม่พบข้อมูลนักเรียนที่ถูกต้องในไฟล์ CSV');
+                    }
+                };
+                reader.readAsText(file, 'utf-8');
+            };
+
+            // ฟังก์ชันสำหรับแปลงข้อความ CSV เป็นอาร์เรย์ของวัตถุ
+            const parseCsv = (text) => {
+                const lines = text.split('\n').filter(line => line.trim() !== '');
+                const headers = lines[0].split(',').map(header => header.trim());
+                const data = lines.slice(1);
+                
+                const newStudents = data.map(line => {
+                    const values = line.split(',');
+                    return {
+                        name: values[1] ? values[1].trim() : '',
+                        workScore: values[2] ? parseFloat(values[2]) : 0,
+                        examScore: values[3] ? parseFloat(values[3]) : 0,
+                    };
+                }).filter(student => student.name && !isNaN(student.workScore) && !isNaN(student.examScore));
+
+                return newStudents;
+            };
+
             // ติดตั้ง Event Listener
             addStudentForm.addEventListener('submit', addStudent);
             calculateGradesBtn.addEventListener('click', calculateGrades);
+            exportCsvBtn.addEventListener('click', exportToCsv);
+            importCsvInput.addEventListener('change', importFromCsv);
             
             // ใช้ Event Delegation สำหรับปุ่ม "ลบ"
             gradesTableBody.addEventListener('click', (event) => {
@@ -305,3 +529,4 @@
 
 </body>
 </html>
+
